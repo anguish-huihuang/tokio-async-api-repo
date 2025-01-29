@@ -1,5 +1,5 @@
 use tokio::net::TcpListener;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{self, AsyncReadExt, AsyncWriteExt};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -29,24 +29,33 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             // 检查是否是GET请求
             if let Some(request_line) = request.lines().next() {
-                if request_line.starts_with("GET / HTTP/1.1") {
-                    // 返回HTTP响应
-                    let response = "HTTP/1.1 200 OK\r\n\
+                // 解析请求路径
+                let path = request_line.split_whitespace().nth(1).unwrap_or("/");
+                println!("请求路径：{}", path);
+
+                // 根据路径返回不同的响应
+                let response = match path {
+                    "/apple" => {
+                        "HTTP/1.1 200 OK\r\n\
                         Content-Type: text/html\r\n\r\n\
-                        <html><body><h1>Holl!</h1></body></html>";
-                    if let Err(e) = socket.write_all(response.as_bytes()).await {
-                        eprintln!("写入错误：{}", e);
-                        return;
-                    }
-                } else {
-                    // 返回404响应
-                    let response = "HTTP/1.1 404 Not Found\r\n\
+                        <html><body><h1>Apples are delicious!</h1></body></html>"
+                    },
+                    "/banana" => {
+                        "HTTP/1.1 200 OK\r\n\
                         Content-Type: text/html\r\n\r\n\
-                        <html><body><h1>404 Not Found</h1></body></html>";
-                    if let Err(e) = socket.write_all(response.as_bytes()).await {
-                        eprintln!("写入错误：{}", e);
-                        return;
+                        <html><body><h1>Bananas are great too!</h1></body></html>"
+                    },
+                    _ => {
+                        "HTTP/1.1 404 Not Found\r\n\
+                        Content-Type: text/html\r\n\r\n\
+                        <html><body><h1>404 Not Found</h1></body></html>"
                     }
+                };
+
+                // 发送响应
+                if let Err(e) = socket.write_all(response.as_bytes()).await {
+                    eprintln!("写入错误：{}", e);
+                    return;
                 }
             }
         });
